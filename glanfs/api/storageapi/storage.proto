@@ -1,0 +1,49 @@
+edition = "2023";
+
+package com.github.overmighty.glan.glanfs.api.storageapi;
+
+option go_package = "/api/storageapi";
+
+message Request {
+  oneof body {
+    GetCapacityRequest get_capacity = 1;
+
+    WriteRequest write = 2;
+    ReadRequest read = 3;
+  }
+}
+
+message Response {
+  oneof body {
+    GetCapacityResponse get_capacity = 2;
+
+    WriteResponse write = 3;
+    ReadResponse read = 4;
+  }
+}
+
+message GetCapacityRequest {
+}
+
+message GetCapacityResponse {
+  uint64 num_blocks = 1;
+}
+
+message WriteRequest {
+  uint64 block_id = 1;
+  bytes data = 2;
+  uint64 offset = 3;
+}
+
+message WriteResponse {
+}
+
+message ReadRequest {
+  uint64 block_id = 1;
+  uint64 size = 2;
+  uint64 offset = 3;
+}
+
+message ReadResponse {
+  bytes data = 1;
+}

@@ -1,0 +1,106 @@
+edition = "2023";
+
+package com.github.overmighty.glan.glanfs.api.fsapi;
+
+option go_package = "/api/fsapi";
+
+enum Error {
+  ERROR_UNSPECIFIED = 0;
+  ERROR_ENOENT = 1;
+  ERROR_ENOTDIR = 2;
+  ERROR_EEXIST = 3;
+  ERROR_EMSGSIZE = 4;
+  ERROR_ENOSPC = 5;
+}
+
+enum FileType {
+  FILE_TYPE_UNSPECIFIED = 0;
+  FILE_TYPE_REGULAR = 1;
+  FILE_TYPE_DIRECTORY = 2;
+}
+
+message Node {
+  uint64 id = 1;
+  FileType type = 2;
+  string name = 3;
+}
+
+message Request {
+  oneof body {
+    LookupRequest lookup = 1;
+    CreateRequest create = 2;
+    ReaddirRequest readdir = 3;
+    GetattrRequest getattr = 4;
+
+    WriteRequest write = 5;
+    ReadRequest read = 6;
+  }
+}
+
+message Response {
+  oneof body {
+    Error error = 1;
+
+    LookupResponse lookup = 2;
+    CreateResponse create = 3;
+    ReaddirResponse readdir = 4;
+    GetattrResponse getattr = 5;
+
+    WriteResponse write = 6;
+    ReadResponse read = 7;
+  }
+}
+
+message LookupRequest {
+  uint64 parent_id = 1;
+  string name = 2;
+}
+
+message LookupResponse {
+  uint64 id = 1;
+  FileType type = 2;
+}
+
+message CreateRequest {
+  uint64 parent_id = 1;
+  string name = 2;
+}
+
+message CreateResponse {
+  uint64 id = 1;
+}
+
+message ReaddirRequest {
+  uint64 id = 1;
+}
+
+message ReaddirResponse {
+  repeated Node entries = 1;
+}
+
+message GetattrRequest {
+  uint64 id = 1;
+}
+
+message GetattrResponse {
+  uint64 size = 1;
+}
+
+message WriteRequest {
+  uint64 id = 1;
+  bytes data = 2;
+  uint64 offset = 3;
+}
+
+message WriteResponse {
+}
+
+message ReadRequest {
+  uint64 id = 1;
+  uint64 size = 2;
+  uint64 offset = 3;
+}
+
+message ReadResponse {
+  bytes data = 1;
+}
