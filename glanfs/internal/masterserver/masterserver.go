@@ -30,18 +30,17 @@ func (m *MasterServer) Run() error {
 	m.fsTable = newFSTable()
 	rootNode := newDirNode("/")
 	if err := m.fsTable.addNode(0, rootNode); err != 0 {
-		err.String()
-		return fmt.Errorf("failed to create root node: %s", err)
+		return fmt.Errorf("masterserver: failed to create root node: %v", err)
 	}
 
 	m.storageList = newStorageList()
 
 	var err error
 	if m.clientLn, err = net.Listen("tcp", m.Config.ClientListenerAddr); err != nil {
-		return err
+		return fmt.Errorf("masterserver: failed to listen on %s: %w", m.Config.ClientListenerAddr, err)
 	}
 	if m.storageLn, err = net.Listen("tcp", m.Config.StorageServerListenerAddr); err != nil {
-		return err
+		return fmt.Errorf("masterserver: failed to listen on %s: %w", m.Config.StorageServerListenerAddr, err)
 	}
 
 	go m.listenForStorageServers()

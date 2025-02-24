@@ -30,7 +30,7 @@ func (c *Client) Run() error {
 
 	if _, err := os.Stat(c.Config.MountPoint); os.IsNotExist(err) {
 		if err := os.MkdirAll(c.Config.MountPoint, 0700); err != nil {
-			return err
+			return fmt.Errorf("client: failed to create mountpoint: %w", err)
 		}
 	}
 
@@ -42,7 +42,7 @@ func (c *Client) Run() error {
 
 	server, err := fs.Mount(c.Config.MountPoint, glanfsRoot, opts)
 	if err != nil {
-		return fmt.Errorf("glanfs/client: failed to mount: %s", err.Error())
+		return fmt.Errorf("client: failed to mount GLANFS: %w", err)
 	}
 	defer func(server *fuse.Server) {
 		if err := server.Unmount(); err != nil {
@@ -52,7 +52,7 @@ func (c *Client) Run() error {
 
 	conn, err := net.Dial("tcp", c.Config.MasterServerAddr)
 	if err != nil {
-		return fmt.Errorf("glanfs/client: failed to connect to master server: %s", err.Error())
+		return fmt.Errorf("client: failed to connect to master server: %w", err)
 	}
 	c.conn = common.NewConn[*fsapi.Request, *fsapi.Response](conn)
 

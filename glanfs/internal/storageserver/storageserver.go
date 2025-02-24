@@ -32,7 +32,7 @@ func (s *StorageServer) Run() error {
 
 	conn, err := net.Dial("tcp", s.Config.MasterServerAddr)
 	if err != nil {
-		return fmt.Errorf("glanfs/storageserver: failed to connect to master server: %s", err.Error())
+		return fmt.Errorf("storageserver: failed to connect to master server: %w", err)
 	}
 	s.conn = common.NewConn[*storageapi.Response, *storageapi.Request](conn)
 
