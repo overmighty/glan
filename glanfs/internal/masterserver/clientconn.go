@@ -1,26 +1,33 @@
 package masterserver
 
 import (
+	"context"
 	"github.com/overmighty/glan/glanfs/api/fsapi"
 	"github.com/overmighty/glan/glanfs/internal/common"
 	"log/slog"
+	"time"
 )
 
 type clientConn struct {
 	server *MasterServer
 
 	conn *common.Conn[*fsapi.Response, *fsapi.Request]
+
+	requestStartTime time.Time
 }
 
 func (c *clientConn) serve() {
 	defer c.conn.Close()
+	defer func() {
+		c.server.clientCounter.Add(context.Background(), -1)
+	}()
 
 	for {
 		var req fsapi.Request
-		//startTime := time.Now()
 		err := c.conn.ReadMessage(&req)
-		//endTime := time.Now()
-		//slog.Debug("clientConn", "wait_time_ns", endTime.Sub(startTime).Nanoseconds())
+
+		c.requestStartTime = time.Now()
+
 		if err != nil {
 			slog.Error("Failed to read message", "err", err, "remote_addr", c.conn.RemoteAddr())
 			return
@@ -141,6 +148,7 @@ func (c *clientConn) handleWrite(req *fsapi.Request) {
 			c.respondError(err)
 			return
 		}
+		c.server.bytesWrittenCounter.Add(context.Background(), int64(len(write.GetData())))
 		file.addBlock(write.GetOffset(), blk)
 		c.respondWrite()
 		return
@@ -169,5 +177,6 @@ func (c *clientConn) handleRead(req *fsapi.Request) {
 	storageServer := c.server.storageList.getStorage(blk.storageIdx)
 	size := min(read.GetSize(), blk.size)
 	resp := storageServer.read(blk.id, size, read.GetOffset()%common.BlockSize)
+	c.server.bytesReadCounter.Add(context.Background(), int64(len(resp.GetData())))
 	c.respondRead(resp.GetData())
 }

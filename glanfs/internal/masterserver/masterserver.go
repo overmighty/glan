@@ -1,13 +1,18 @@
 package masterserver
 
 import (
+	"context"
 	"fmt"
 	"github.com/overmighty/glan/glanfs/api/fsapi"
 	"github.com/overmighty/glan/glanfs/api/storageapi"
 	"github.com/overmighty/glan/glanfs/internal/common"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/metric"
 	"log/slog"
 	"net"
 )
+
+var meter = otel.Meter("github.com/overmighty/glan/glanfs/internal/masterserver")
 
 type Config struct {
 	ClientListenerAddr        string
@@ -22,10 +27,20 @@ type MasterServer struct {
 
 	clientLn  net.Listener
 	storageLn net.Listener
+
+	clientCounter       metric.Int64UpDownCounter
+	responseTimeHist    metric.Int64Histogram
+	bytesReadCounter    metric.Int64UpDownCounter
+	bytesWrittenCounter metric.Int64UpDownCounter
 }
 
 func (m *MasterServer) Run() error {
 	slog.Debug("Running master server")
+
+	err := m.initInstrumentation()
+	if err != nil {
+		return fmt.Errorf("masterserver: failed to init instrumentation: %w", err)
+	}
 
 	m.fsTable = newFSTable()
 	rootNode := newDirNode("/")
@@ -33,9 +48,11 @@ func (m *MasterServer) Run() error {
 		return fmt.Errorf("masterserver: failed to create root node: %v", err)
 	}
 
-	m.storageList = newStorageList()
+	m.storageList, err = newStorageList()
+	if err != nil {
+		return fmt.Errorf("masterserver: failed to init storage list: %w", err)
+	}
 
-	var err error
 	if m.clientLn, err = net.Listen("tcp", m.Config.ClientListenerAddr); err != nil {
 		return fmt.Errorf("masterserver: failed to listen on %s: %w", m.Config.ClientListenerAddr, err)
 	}
@@ -48,6 +65,43 @@ func (m *MasterServer) Run() error {
 	return nil
 }
 
+func (m *MasterServer) initInstrumentation() error {
+	var err error
+	m.clientCounter, err = meter.Int64UpDownCounter(
+		"glanfs.masterserver.clients",
+		metric.WithUnit("{client}"),
+	)
+	if err != nil {
+		return err
+	}
+
+	m.responseTimeHist, err = meter.Int64Histogram(
+		"glanfs.masterserver.response_time",
+		metric.WithUnit("ns"),
+	)
+	if err != nil {
+		return err
+	}
+
+	m.bytesReadCounter, err = meter.Int64UpDownCounter(
+		"glanfs.masterserver.bytes_read",
+		metric.WithUnit("By"),
+	)
+	if err != nil {
+		return err
+	}
+
+	m.bytesWrittenCounter, err = meter.Int64UpDownCounter(
+		"glanfs.masterserver.bytes_written",
+		metric.WithUnit("By"),
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (m *MasterServer) listenForClients() {
 	for {
 		conn, err := m.clientLn.Accept()
@@ -56,6 +110,7 @@ func (m *MasterServer) listenForClients() {
 			continue
 		}
 		slog.Debug("Accepted client conn", "remote_addr", conn.RemoteAddr())
+		m.clientCounter.Add(context.Background(), 1)
 
 		c := &clientConn{
 			server: m,

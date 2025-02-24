@@ -120,8 +120,6 @@ type glanfsFileHandle struct {
 }
 
 func (f *glanfsFileHandle) Write(_ context.Context, data []byte, off int64) (written uint32, errno syscall.Errno) {
-	slog.Debug("Write called", "size", len(data), "off", off)
-
 	if off < 0 {
 		panic(fmt.Errorf("negative off: %d", off))
 	}
@@ -165,8 +163,6 @@ func (r *readResult) Done() {
 }
 
 func (f *glanfsFileHandle) Read(_ context.Context, dest []byte, off int64) (fuse.ReadResult, syscall.Errno) {
-	slog.Debug("Read called", "size", len(dest), "off", off)
-
 	if off < 0 {
 		panic(fmt.Errorf("negative off: %d", off))
 	}

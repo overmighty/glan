@@ -1,8 +1,10 @@
 package masterserver
 
 import (
+	"context"
 	"github.com/overmighty/glan/glanfs/api/fsapi"
 	"log/slog"
+	"time"
 )
 
 func (c *clientConn) respond(resp *fsapi.Response) {
@@ -10,6 +12,10 @@ func (c *clientConn) respond(resp *fsapi.Response) {
 		slog.Error("Failed to write message", "err", err, "remote_addr", c.conn.RemoteAddr())
 		panic(err)
 	}
+
+	requestEndTime := time.Now()
+	responseTime := requestEndTime.Sub(c.requestStartTime)
+	c.server.responseTimeHist.Record(context.Background(), responseTime.Nanoseconds())
 }
 
 func (c *clientConn) respondError(err fsapi.Error) {

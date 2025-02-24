@@ -1,7 +1,11 @@
 package main
 
 import (
+	"context"
 	"github.com/overmighty/glan/glanfs/cmd"
+	"github.com/overmighty/glan/glanfs/internal/instrumentation"
+	otelruntime "go.opentelemetry.io/contrib/instrumentation/runtime"
+	"go.opentelemetry.io/otel"
 	"log"
 	"log/slog"
 	"os"
@@ -13,6 +17,24 @@ func main() {
 	level.Set(slog.LevelDebug)
 	h := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})
 	slog.SetDefault(slog.New(h))
+
+	if os.Getenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT") != "" {
+		res, err := instrumentation.NewResource()
+		if err != nil {
+			panic(err)
+		}
+
+		meterProvider, err := instrumentation.NewMeterProvider(res)
+		if err != nil {
+			panic(err)
+		}
+		defer meterProvider.Shutdown(context.Background())
+		otel.SetMeterProvider(meterProvider)
+
+		if err = otelruntime.Start(); err != nil {
+			panic(err)
+		}
+	}
 
 	cpuProfile := os.Getenv("GLANFS_CPU_PROFILE")
 	if cpuProfile != "" {
